@@ -1,4 +1,6 @@
 import { GameObject, EnemyPlane, BulletItem } from '../model/GameModels'
+import keyCode from '@ohos.multimodalInput.keyCode'
+import keyEvent from '@ohos.multimodalInput.keyEvent'
 
 @Entry
 @Component
@@ -40,14 +42,19 @@ struct Index {
   private gameAreaWidth: number = 0
   private gameAreaHeight: number = 0
 
+  // 添加键盘控制相关属性
+  private readonly KEY_MOVE_SPEED: number = 8  // 键盘移动速度
+  private keyboardTimer: number = 0  // 键盘控制定时器
+
+  @State private keyStates: Record<number, boolean> = {}  // 记录按键状态
+
   aboutToAppear() {
     // 设置游戏区域尺寸
-    this.gameAreaWidth = vp2px(750)  // 转换为实际像素
-    this.gameAreaHeight = vp2px(1000)
+    this.gameAreaWidth = 750
+    this.gameAreaHeight = 1000
     
-    // 初始化飞机位置到底部中间
-    this.playerX = this.gameAreaWidth / 2 - this.PLAYER_SIZE / 2
-    this.playerY = this.gameAreaHeight * 0.8 - this.PLAYER_SIZE - 50
+    // 初始化飞机位置
+    this.initializePlayerPosition()
   }
 
   build() {
@@ -72,9 +79,7 @@ struct Index {
         .height('100%')
         .justifyContent(FlexAlign.Center)
       } else {
-        // 游戏界面
         Column() {
-          // 得分显示改为悬浮在游戏区域上方
           Stack() {
             // 游戏区域
             Stack() {
@@ -83,8 +88,8 @@ struct Index {
                 .width(this.PLAYER_SIZE)
                 .height(this.PLAYER_SIZE)
                 .position({
-                  x: `${this.playerX}px`,
-                  y: `${this.playerY}px`
+                  x: `${this.playerX}vp`,
+                  y: `${this.playerY}vp`
                 })
 
               // 敌机
@@ -94,8 +99,8 @@ struct Index {
                   .height(this.ENEMY_SIZE)
                   .fill('#FF0000')
                   .position({
-                    x: `${enemy.x}px`,
-                    y: `${enemy.y}px`
+                    x: `${enemy.x}vp`,
+                    y: `${enemy.y}vp`
                   })
               })
 
@@ -116,8 +121,8 @@ struct Index {
                     .margin({ top: -2 })
                 }
                 .position({
-                  x: `${bullet.x}px`,
-                  y: `${bullet.y}px`
+                  x: `${bullet.x}vp`,
+                  y: `${bullet.y}vp`
                 })
               })
             }
@@ -125,7 +130,7 @@ struct Index {
             .height('100%')
             .backgroundColor('#F1F3F5')
 
-            // 得分显示改为悬浮在顶部
+            // 得分显示
             Text(`得分: ${this.score}`)
               .fontSize(30)
               .fontColor(Color.Black)
@@ -140,13 +145,8 @@ struct Index {
           .onTouch((event: TouchEvent) => {
             if (event.type === TouchType.Down || event.type === TouchType.Move) {
               let touch = event.touches[0]
-              // 将触摸坐标转换为实际像素
-              let touchX = vp2px(touch.x)
-              let touchY = vp2px(touch.y)
-
-              // 更新目标位置
-              this.targetX = touchX - this.PLAYER_SIZE / 2
-              this.targetY = touchY - this.PLAYER_SIZE / 2
+              this.targetX = touch.x - this.PLAYER_SIZE / 2
+              this.targetY = touch.y - this.PLAYER_SIZE / 2
 
               // 确保目标位置在游戏区域内
               this.targetX = Math.max(0, Math.min(this.targetX, this.gameAreaWidth - this.PLAYER_SIZE))
@@ -162,6 +162,7 @@ struct Index {
         .height('100%')
       }
 
+      // 游戏结束界面
       if (this.isGameOver) {
         // 游戏结束界面
         Column() {
@@ -187,13 +188,54 @@ struct Index {
     }
     .width('100%')
     .height('100%')
+    .onKeyEvent((event: KeyEvent) => {
+      if (event.type === KeyType.Down) {
+        this.keyStates[event.keyCode] = true
+      } else if (event.type === KeyType.Up) {
+        this.keyStates[event.keyCode] = false
+      }
+    })
   }
 
   // 游戏初始化
   private startGame() {
+    // 初始化游戏状态
     this.isGameStarted = true
-    this.resetGame()
+    this.score = 0
+    this.isGameOver = false
+    this.enemies = []
+    this.bullets = []
+    
+    // 初始化飞机位置
+    this.initializePlayerPosition()
+    
+    // 启动游戏循环
     this.startGameLoop()
+  }
+
+  // 修改初始化飞机位置的方法
+  private initializePlayerPosition() {
+    // 计算飞机的初始位置（屏幕底部中间）
+    this.playerX = (this.gameAreaWidth - this.PLAYER_SIZE) / 2  // 居中
+    this.playerY = this.gameAreaHeight * 0.75  // 在屏幕3/4处
+    
+    // 同步目标位置
+    this.targetX = this.playerX
+    this.targetY = this.playerY
+  }
+
+  // 修改发射子弹的方法
+  private fireBullet() {
+    // 从飞机顶部中心发射子弹
+    const bulletX = this.playerX + (this.PLAYER_SIZE - this.BULLET_SIZE) / 2
+    const bulletY = this.playerY  // 从飞机当前位置发射
+    
+    this.bullets.push(new BulletItem(
+      bulletX,
+      bulletY,
+      this.BULLET_SIZE,
+      this.BULLET_SIZE
+    ))
   }
 
   // 重置游戏状态
@@ -202,9 +244,10 @@ struct Index {
     this.isGameOver = false
     this.enemies = []
     this.bullets = []
-    // 初始化飞机位置到底部中间
-    this.playerX = this.gameAreaWidth / 2 - this.PLAYER_SIZE / 2
-    this.playerY = this.gameAreaHeight * 0.8 - this.PLAYER_SIZE - 50
+    
+    // 使用初始化方法重置飞机位置
+    this.initializePlayerPosition()
+    
     this.lastEnemySpawnTime = 0
     this.lastBulletTime = 0
     
@@ -252,16 +295,6 @@ struct Index {
   private spawnEnemy() {
     const x = Math.random() * (this.gameAreaWidth - this.ENEMY_SIZE)
     this.enemies.push(new EnemyPlane(x, -this.ENEMY_SIZE, this.ENEMY_SIZE, this.ENEMY_SIZE))
-  }
-
-  // 发射子弹
-  private fireBullet() {
-    this.bullets.push(new BulletItem(
-      this.playerX + this.PLAYER_SIZE / 2 - this.BULLET_SIZE / 2,
-      this.playerY,
-      this.BULLET_SIZE,
-      this.BULLET_SIZE
-    ))
   }
 
   // 更新敌机位置
@@ -324,11 +357,13 @@ struct Index {
       this.gameTimer = 0  // 清除定时器ID
     }
     this.stopMoving()
+    this.stopKeyboardControl()  // 停止键盘控制
   }
 
   aboutToDisappear() {
     clearInterval(this.gameTimer)
     this.stopMoving()
+    this.stopKeyboardControl()
   }
 
   // 开始移动
@@ -359,5 +394,53 @@ struct Index {
   private stopMoving() {
     this.isMoving = false
     clearInterval(this.moveTimer)
+  }
+
+  // 处理键盘移动
+  private handleKeyboardMovement() {
+    let dx = 0
+    let dy = 0
+
+    // WASD 控制
+    if (this.keyStates[65] || this.keyStates[37]) { // A or Left Arrow
+      dx -= this.KEY_MOVE_SPEED
+    }
+    if (this.keyStates[68] || this.keyStates[39]) { // D or Right Arrow
+      dx += this.KEY_MOVE_SPEED
+    }
+    if (this.keyStates[87] || this.keyStates[38]) { // W or Up Arrow
+      dy -= this.KEY_MOVE_SPEED
+    }
+    if (this.keyStates[83] || this.keyStates[40]) { // S or Down Arrow
+      dy += this.KEY_MOVE_SPEED
+    }
+
+    // 更新飞机位置
+    if (dx !== 0 || dy !== 0) {
+      let newX = this.playerX + dx
+      let newY = this.playerY + dy
+
+      // 确保飞机不会移出屏幕
+      this.playerX = Math.max(0, Math.min(newX, this.gameAreaWidth - this.PLAYER_SIZE))
+      this.playerY = Math.max(0, Math.min(newY, this.gameAreaHeight - this.PLAYER_SIZE))
+    }
+  }
+
+  // 开始键盘控制
+  private startKeyboardControl() {
+    if (this.keyboardTimer) {
+      clearInterval(this.keyboardTimer)
+    }
+    this.keyboardTimer = setInterval(() => {
+      this.handleKeyboardMovement()
+    }, this.GAME_INTERVAL)
+  }
+
+  // 停止键盘控制
+  private stopKeyboardControl() {
+    if (this.keyboardTimer) {
+      clearInterval(this.keyboardTimer)
+      this.keyboardTimer = 0
+    }
   }
 }
