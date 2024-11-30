@@ -25,10 +25,11 @@ struct Index {
   // 游戏参数
   private readonly PLAYER_SIZE: number = 50
   private readonly ENEMY_SIZE: number = 40
-  private readonly BULLET_SIZE: number = 12
+  private readonly BULLET_SIZE: number = 6
   private readonly ENEMY_SPEED: number = 5 // 增加移动速度
-  private readonly BULLET_SPEED: number = 8
+  private readonly BULLET_SPEED: number = 5
   private readonly ENEMY_SPAWN_INTERVAL: number = 2000 // 增加生成间隔到2秒
+  private readonly BULLET_INTERVAL: number = 200  // 每200ms发射一颗子弹 (1000ms/5=200ms)
 
   private lastEnemySpawnTime: number = 0
   private lastBulletTime: number = 0
@@ -47,6 +48,13 @@ struct Index {
   private keyboardTimer: number = 0  // 键盘控制定时器
 
   @State private keyStates: Record<number, boolean> = {}  // 记录按键状态
+
+  // 添加计时器相关属性
+  @State private gameTime: number = 0  // 游戏时间（毫秒）
+  private gameTimeTimer: number = 0    // 计时器ID
+  private readonly TIME_UPDATE_INTERVAL: number = 10  // 计时器更新间隔（毫秒）
+  private readonly INITIAL_ENEMY_SPAWN_INTERVAL: number = 2000  // 初始敌机生成间隔
+  private readonly MIN_ENEMY_SPAWN_INTERVAL: number = 500  // 最小敌机生成间隔
 
   aboutToAppear() {
     // 设置游戏区域尺寸
@@ -128,15 +136,29 @@ struct Index {
             })
           })
 
-          // 记分板
-          Text(`得分: ${this.score}`)
-            .fontSize(30)
-            .fontColor(Color.Black)
-            .backgroundColor('#FFFFFF88')
-            .padding(10)
+          // 修改计时器和得分显示部分
+          Row() {
+            Column() {
+              Text(`时间: ${(this.gameTime / 1000).toFixed(3)}s`)
+                .fontSize(24)
+                .fontColor(Color.Black)
+                .margin({ bottom: 5 })
+                .textAlign(TextAlign.Start)  // 左对齐
+              
+              Text(`得分: ${this.score}`)
+                .fontSize(24)
+                .fontColor(Color.Black)
+                .textAlign(TextAlign.Start)  // 左对齐
+            }
+            .backgroundColor('rgba(255, 255, 255, 0.3)')  // 使用更透明的背景
+            .padding({ left: 20, right: 20, top: 10, bottom: 10 })
             .borderRadius(15)
-            .position({ x: '50%', y: 20 })
-            .translate({ x: '-50%' })
+            .alignItems(HorizontalAlign.Start)  // 子元素左对齐
+            .margin({ left: 20, top: 20 })
+          }
+          .alignItems(VerticalAlign.Top)  // 修改这里，使用 VerticalAlign 代替 ItemAlign
+          .width('100%')
+          .position({ x: 0, y: 0 })
         }
         .width('100%')
         .height('100%')
@@ -194,18 +216,16 @@ struct Index {
 
   // 游戏初始化
   private startGame() {
-    // 初始化游戏状态
     this.isGameStarted = true
     this.score = 0
     this.isGameOver = false
     this.enemies = []
     this.bullets = []
+    this.gameTime = 0  // 重置游戏时间
     
-    // 初始化飞机位置
     this.initializePlayerPosition()
-    
-    // 启动游戏循环
     this.startGameLoop()
+    this.startGameTimer()  // 启动计时器
   }
 
   // 修改初始化飞机位置的方法
@@ -264,14 +284,15 @@ struct Index {
   private updateGame() {
     const currentTime = Date.now()
 
-    // 生成敌机
-    if (currentTime - this.lastEnemySpawnTime > this.ENEMY_SPAWN_INTERVAL) {
+    // 使用动态计算的生成间隔
+    const currentSpawnInterval = this.getCurrentEnemySpawnInterval()
+    if (currentTime - this.lastEnemySpawnTime > currentSpawnInterval) {
       this.spawnEnemy()
       this.lastEnemySpawnTime = currentTime
     }
 
-    // 发射子弹
-    if (currentTime - this.lastBulletTime > 200) { // 每200ms发射一颗子弹
+    // 发射子弹 - 修改这部分
+    if (currentTime - this.lastBulletTime > this.BULLET_INTERVAL) {  // 使用BULLET_INTERVAL
       this.fireBullet()
       this.lastBulletTime = currentTime
     }
@@ -282,7 +303,7 @@ struct Index {
     // 更新子弹位置
     this.updateBullets()
 
-    // 检测撞
+    // 检测碰撞
     this.checkCollisions()
   }
 
@@ -309,7 +330,7 @@ struct Index {
   private updateBullets() {
     this.bullets = this.bullets.filter(bullet => {
       bullet.y -= this.BULLET_SPEED
-      return bullet.y > -this.BULLET_SIZE // 移除超���屏幕的子弹
+      return bullet.y > -this.BULLET_SIZE // 移除超屏幕的子弹
     })
   }
 
@@ -354,14 +375,16 @@ struct Index {
     this.isGameOver = true
     if (this.gameTimer) {
       clearInterval(this.gameTimer)
-      this.gameTimer = 0  // 清除定时器ID
+      this.gameTimer = 0
     }
+    this.stopGameTimer()  // 停止计时器
     this.stopMoving()
-    this.stopKeyboardControl()  // 停止键盘控制
+    this.stopKeyboardControl()
   }
 
   aboutToDisappear() {
     clearInterval(this.gameTimer)
+    this.stopGameTimer()  // 清理计时器
     this.stopMoving()
     this.stopKeyboardControl()
   }
@@ -426,7 +449,7 @@ struct Index {
     }
   }
 
-  // 开始键盘控制
+  // 开始键控制
   private startKeyboardControl() {
     if (this.keyboardTimer) {
       clearInterval(this.keyboardTimer)
@@ -442,5 +465,30 @@ struct Index {
       clearInterval(this.keyboardTimer)
       this.keyboardTimer = 0
     }
+  }
+
+  // 开始计时器
+  private startGameTimer() {
+    this.gameTimeTimer = setInterval(() => {
+      this.gameTime += this.TIME_UPDATE_INTERVAL
+    }, this.TIME_UPDATE_INTERVAL)
+  }
+
+  // 停止计时器
+  private stopGameTimer() {
+    if (this.gameTimeTimer) {
+      clearInterval(this.gameTimeTimer)
+      this.gameTimeTimer = 0
+    }
+  }
+
+  // 获取当前敌机生成间隔
+  private getCurrentEnemySpawnInterval(): number {
+    // 每10秒减少500ms，直到达到最小间隔
+    const reduction = Math.floor(this.gameTime / 10000) * 500
+    return Math.max(
+      this.MIN_ENEMY_SPAWN_INTERVAL,
+      this.INITIAL_ENEMY_SPAWN_INTERVAL - reduction
+    )
   }
 }
