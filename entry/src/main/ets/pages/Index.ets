@@ -1,6 +1,4 @@
 import { GameObject, EnemyPlane, BulletItem } from '../model/GameModels'
-import keyCode from '@ohos.multimodalInput.keyCode'
-import keyEvent from '@ohos.multimodalInput.keyEvent'
 
 @Entry
 @Component
@@ -42,12 +40,6 @@ struct Index {
   private isMoving: boolean = false
   private gameAreaWidth: number = 0
   private gameAreaHeight: number = 0
-
-  // 添加键盘控制相关属性
-  private readonly KEY_MOVE_SPEED: number = 8  // 键盘移动速度
-  private keyboardTimer: number = 0  // 键盘控制定时器
-
-  @State private keyStates: Record<number, boolean> = {}  // 记录按键状态
 
   // 添加计时器相关属性
   @State private gameTime: number = 0  // 游戏时间（毫秒）
@@ -205,13 +197,6 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .onKeyEvent((event: KeyEvent) => {
-      if (event.type === KeyType.Down) {
-        this.keyStates[event.keyCode] = true
-      } else if (event.type === KeyType.Up) {
-        this.keyStates[event.keyCode] = false
-      }
-    })
   }
 
   // 游戏初始化
@@ -379,14 +364,12 @@ struct Index {
     }
     this.stopGameTimer()  // 停止计时器
     this.stopMoving()
-    this.stopKeyboardControl()
   }
 
   aboutToDisappear() {
     clearInterval(this.gameTimer)
     this.stopGameTimer()  // 清理计时器
     this.stopMoving()
-    this.stopKeyboardControl()
   }
 
   // 开始移动
@@ -417,54 +400,6 @@ struct Index {
   private stopMoving() {
     this.isMoving = false
     clearInterval(this.moveTimer)
-  }
-
-  // 处理键盘移动
-  private handleKeyboardMovement() {
-    let dx = 0
-    let dy = 0
-
-    // WASD 控制
-    if (this.keyStates[65] || this.keyStates[37]) { // A or Left Arrow
-      dx -= this.KEY_MOVE_SPEED
-    }
-    if (this.keyStates[68] || this.keyStates[39]) { // D or Right Arrow
-      dx += this.KEY_MOVE_SPEED
-    }
-    if (this.keyStates[87] || this.keyStates[38]) { // W or Up Arrow
-      dy -= this.KEY_MOVE_SPEED
-    }
-    if (this.keyStates[83] || this.keyStates[40]) { // S or Down Arrow
-      dy += this.KEY_MOVE_SPEED
-    }
-
-    // 更新飞机位置
-    if (dx !== 0 || dy !== 0) {
-      let newX = this.playerX + dx
-      let newY = this.playerY + dy
-
-      // 确保飞机不会移出屏幕
-      this.playerX = Math.max(0, Math.min(newX, this.gameAreaWidth - this.PLAYER_SIZE))
-      this.playerY = Math.max(0, Math.min(newY, this.gameAreaHeight - this.PLAYER_SIZE))
-    }
-  }
-
-  // 开始键控制
-  private startKeyboardControl() {
-    if (this.keyboardTimer) {
-      clearInterval(this.keyboardTimer)
-    }
-    this.keyboardTimer = setInterval(() => {
-      this.handleKeyboardMovement()
-    }, this.GAME_INTERVAL)
-  }
-
-  // 停止键盘控制
-  private stopKeyboardControl() {
-    if (this.keyboardTimer) {
-      clearInterval(this.keyboardTimer)
-      this.keyboardTimer = 0
-    }
   }
 
   // 开始计时器
