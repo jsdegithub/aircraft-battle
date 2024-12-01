@@ -1,20 +1,30 @@
-import { GameObject, EnemyPlane, BulletItem } from '../model/GameModels'
+import { GameObject, EnemyPlane, BulletItem, PlayerPlane, Explosion } from '../model/GameModels'
 
 @Entry
 @Component
 struct Index {
   // 游戏状态
   @State private isGameStarted: boolean = false
-  @State private score: number = 0
   @State private isGameOver: boolean = false
+  @State private score: number = 0
+  @State private gameTime: number = 0  // 游戏时间（毫秒）
 
-  // 玩家飞机位置
-  @State private playerX: number = 0
-  @State private playerY: number = 0
+  // 游戏区域尺寸
+  @State private gameAreaWidth: number = 0
+  @State private gameAreaHeight: number = 0
 
-  // 敌机和子弹数组
+  // 玩家飞机
+  @State private player: PlayerPlane = new PlayerPlane(0, 0, 50, 50)
+  @State private targetX: number = 0
+  @State private targetY: number = 0
+  @State private isMoving: boolean = false
+  private moveTimer: number = 0
+  private readonly PLAYER_SPEED: number = 15
+
+  // 游戏元素
   @State private enemies: EnemyPlane[] = []
   @State private bullets: BulletItem[] = []
+  @State private explosions: Explosion[] = []
 
   // 游戏循环定时器
   private gameTimer: number = 0
@@ -23,26 +33,17 @@ struct Index {
   // 游戏参数
   private readonly PLAYER_SIZE: number = 50
   private readonly ENEMY_SIZE: number = 40
-  private readonly BULLET_SIZE: number = 6
-  private readonly ENEMY_SPEED: number = 5 // 增加移动速度
-  private readonly BULLET_SPEED: number = 5
-  private readonly ENEMY_SPAWN_INTERVAL: number = 2000 // 增加生成间隔到2秒
-  private readonly BULLET_INTERVAL: number = 200  // 每200ms发射一颗子弹 (1000ms/5=200ms)
+  private readonly BULLET_SIZE: number = 10
+  private readonly ENEMY_SPEED: number = 3
+  private readonly BULLET_SPEED: number = 8
+  private readonly ENEMY_SPAWN_INTERVAL: number = 2000
+  private readonly BULLET_INTERVAL: number = 200
+  private readonly EXPLOSION_DURATION: number = 500
+  private readonly INVINCIBLE_DURATION: number = 2000
 
+  // 时间记录
   private lastEnemySpawnTime: number = 0
   private lastBulletTime: number = 0
-
-  // 修改移相关的属性
-  private readonly PLAYER_SPEED: number = 15
-  private moveTimer: number = 0
-  private targetX: number = 0
-  private targetY: number = 0
-  private isMoving: boolean = false
-  private gameAreaWidth: number = 0
-  private gameAreaHeight: number = 0
-
-  // 添加计时器相关属性
-  @State private gameTime: number = 0  // 游戏时间（毫秒）
   private gameTimeTimer: number = 0    // 计时器ID
   private readonly TIME_UPDATE_INTERVAL: number = 10  // 计时器更新间隔（毫秒）
   private readonly INITIAL_ENEMY_SPAWN_INTERVAL: number = 2000  // 初始敌机生成间隔
@@ -58,7 +59,7 @@ struct Index {
   }
 
   build() {
-    Stack() {
+    Column() {
       if (!this.isGameStarted) {
         // 开始界面
         Column() {
@@ -88,80 +89,28 @@ struct Index {
 
           // 敌机
           ForEach(this.enemies, (enemy: EnemyPlane) => {
-            Column() {
-              Stack() {
-                // 机身主体
-                Column() {
-                  // 机头
-                  Circle()
-                    .width(this.ENEMY_SIZE * 0.3)
-                    .height(this.ENEMY_SIZE * 0.3)
-                    .fill('#666666')
-                  
-                  // 机身
-                  Column()
-                    .width(this.ENEMY_SIZE * 0.3)
-                    .height(this.ENEMY_SIZE * 0.5)
-                    .backgroundColor('#666666')
-                }
-                .position({ x: this.ENEMY_SIZE * 0.35, y: 0 })
-                
-                // 左机翼
-                Polygon()
-                  .width(this.ENEMY_SIZE * 0.6)
-                  .height(this.ENEMY_SIZE * 0.4)
-                  .points([
-                    [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.2],
-                    [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
-                    [0, this.ENEMY_SIZE * 0.4],
-                    [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4]
-                  ])
-                  .fill('#888888')
-                  .position({ x: 0, y: this.ENEMY_SIZE * 0.2 })
-                
-                // 右机翼
-                Polygon()
-                  .width(this.ENEMY_SIZE * 0.6)
-                  .height(this.ENEMY_SIZE * 0.4)
-                  .points([
-                    [0, this.ENEMY_SIZE * 0.2],
-                    [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2], 
-                    [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4],
-                    [0, this.ENEMY_SIZE * 0.4]
-                  ])
-                  .fill('#888888')
-                  .position({ x: this.ENEMY_SIZE * 0.4, y: this.ENEMY_SIZE * 0.2 })
-                
-                // 尾翼
-                Polygon()
-                  .width(this.ENEMY_SIZE * 0.4)
-                  .height(this.ENEMY_SIZE * 0.2)
-                  .points([
-                    [this.ENEMY_SIZE * 0.2, 0],
-                    [this.ENEMY_SIZE * 0.4, 0],
-                    [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
-                    [0, this.ENEMY_SIZE * 0.2]
-                  ])
-                  .fill('#888888')
-                  .position({ x: this.ENEMY_SIZE * 0.3, y: this.ENEMY_SIZE * 0.7 })
-                
-                // 机舱玻璃
-                Circle()
-                  .width(this.ENEMY_SIZE * 0.15)
-                  .height(this.ENEMY_SIZE * 0.15)
-                  .fill('#333333')
-                  .position({ x: this.ENEMY_SIZE * 0.425, y: this.ENEMY_SIZE * 0.15 })
-              }
+            if (!enemy.isDestroyed) {
+              Image($r('app.media.img_enemy_aircraft3'))
+                .width(this.ENEMY_SIZE)
+                .height(this.ENEMY_SIZE)
+                .position({
+                  x: enemy.x,
+                  y: enemy.y
+                })
+                .rotate({ angle: 180 })
+                .opacity(enemy.explosionState === 0 ? 1 : (1 - enemy.explosionState / 4))
             }
-            .width(this.ENEMY_SIZE)
-            .height(this.ENEMY_SIZE)
-            .position({
-              x: `${enemy.x}vp`,
-              y: `${enemy.y}vp`
-            })
-            .opacity(0.99)
-            .translate({ x: 0, y: 0 })
-            .rotate({ angle: 180 })  // 使敌机朝下
+          })
+
+          // 子弹
+          ForEach(this.bullets, (bullet: BulletItem) => {
+            Image($r('app.media.bullet'))
+              .width(this.BULLET_SIZE)
+              .height(this.BULLET_SIZE * 2)
+              .position({
+                x: bullet.x,
+                y: bullet.y
+              })
           })
 
           // 玩家飞机
@@ -169,53 +118,34 @@ struct Index {
             .width(this.PLAYER_SIZE)
             .height(this.PLAYER_SIZE)
             .position({
-              x: `${this.playerX}vp`,
-              y: `${this.playerY}vp`
+              x: this.player.x,
+              y: this.player.y
             })
+            .opacity(this.player.invincible ? 0.5 : 1)
 
-          // 子弹
-          ForEach(this.bullets, (bullet: BulletItem) => {
-            Column() {
-              // 子弹主体
-              Circle()
-                .width(this.BULLET_SIZE)
-                .height(this.BULLET_SIZE)
-                .fill(Color.Black)
-              
-              // 子弹尾部
-              Circle()
-                .width(this.BULLET_SIZE * 0.6)
-                .height(this.BULLET_SIZE * 0.6)
-                .fill(Color.Black)
-                .margin({ top: -2 })
-            }
-            .position({
-              x: `${bullet.x}vp`,
-              y: `${bullet.y}vp`
-            })
-          })
-
-          // 修改计时器和得分显示部分
+          // 状态显示
           Row() {
             Column() {
-              Text(`时间: ${(this.gameTime / 1000).toFixed(3)}s`)
+              Text(`时间: ${(this.gameTime / 1000).toFixed(1)}s`)
                 .fontSize(24)
                 .fontColor(Color.Black)
                 .margin({ bottom: 5 })
-                .textAlign(TextAlign.Start)  // 左对齐
               
               Text(`得分: ${this.score}`)
                 .fontSize(24)
                 .fontColor(Color.Black)
-                .textAlign(TextAlign.Start)  // 左对齐
+              
+              Text(`生命: ${this.player.lives}`)
+                .fontSize(24)
+                .fontColor(Color.Black)
+                .margin({ top: 5 })
             }
-            .backgroundColor('rgba(255, 255, 255, 0.3)')  // 使用更透明的背景
-            .padding({ left: 20, right: 20, top: 10, bottom: 10 })
+            .backgroundColor('rgba(255, 255, 255, 0.7)')
+            .padding(10)
             .borderRadius(15)
-            .alignItems(HorizontalAlign.Start)  // 子元素左对齐
             .margin({ left: 20, top: 20 })
           }
-          .alignItems(VerticalAlign.Top)  // 修改这里，使用 VerticalAlign 代替 ItemAlign
+          .alignItems(VerticalAlign.Top)
           .width('100%')
           .position({ x: 0, y: 0 })
         }
@@ -227,7 +157,6 @@ struct Index {
             this.targetX = touch.x - this.PLAYER_SIZE / 2
             this.targetY = touch.y - this.PLAYER_SIZE / 2
 
-            // 确保目标位置在游戏区域内
             this.targetX = Math.max(0, Math.min(this.targetX, this.gameAreaWidth - this.PLAYER_SIZE))
             this.targetY = Math.max(0, Math.min(this.targetY, this.gameAreaHeight - this.PLAYER_SIZE))
 
@@ -273,6 +202,7 @@ struct Index {
     this.isGameOver = false
     this.enemies = []
     this.bullets = []
+    this.explosions = []
     this.gameTime = 0  // 重置游戏时间
     
     this.initializePlayerPosition()
@@ -283,19 +213,19 @@ struct Index {
   // 修改初始化飞机位置的方法
   private initializePlayerPosition() {
     // 计算飞机的初始位置（屏幕底部中间）
-    this.playerX = (this.gameAreaWidth - this.PLAYER_SIZE) / 2  // 居中
-    this.playerY = this.gameAreaHeight * 0.75  // 在屏幕3/4处
+    this.player.x = (this.gameAreaWidth - this.PLAYER_SIZE) / 2  // 居中
+    this.player.y = this.gameAreaHeight * 0.75  // 在屏幕3/4处
     
     // 同步目标位置
-    this.targetX = this.playerX
-    this.targetY = this.playerY
+    this.targetX = this.player.x
+    this.targetY = this.player.y
   }
 
   // 修改发射子弹的方法
   private fireBullet() {
     // 从飞机顶部中心发射子弹
-    const bulletX = this.playerX + (this.PLAYER_SIZE - this.BULLET_SIZE) / 2
-    const bulletY = this.playerY  // 从飞机当前位置发射
+    const bulletX = this.player.x + (this.PLAYER_SIZE - this.BULLET_SIZE) / 2
+    const bulletY = this.player.y  // 从飞机当前位置发射
     
     this.bullets.push(new BulletItem(
       bulletX,
@@ -311,6 +241,7 @@ struct Index {
     this.isGameOver = false
     this.enemies = []
     this.bullets = []
+    this.explosions = []
     
     // 使用初始化方法重置飞机位置
     this.initializePlayerPosition()
@@ -334,29 +265,46 @@ struct Index {
 
   // 游戏逻辑更新
   private updateGame() {
-    const currentTime = Date.now()
+    const currentTime = new Date().getTime()
 
-    // 使用动态计算的生成间隔
-    const currentSpawnInterval = this.getCurrentEnemySpawnInterval()
-    if (currentTime - this.lastEnemySpawnTime > currentSpawnInterval) {
+    // 更新无敌状态
+    if (this.player.invincible) {
+      this.player.invincibleTimer -= this.GAME_INTERVAL
+      if (this.player.invincibleTimer <= 0) {
+        this.player.invincible = false
+      }
+    }
+
+    // 更新敌机状态
+    this.enemies = this.enemies.filter(enemy => {
+      if (enemy.explosionState > 0) {
+        enemy.explosionState++
+        return enemy.explosionState <= 4
+      }
+      enemy.y += this.ENEMY_SPEED
+      return enemy.y < this.gameAreaHeight
+    })
+
+    // 更新子弹位置
+    this.bullets = this.bullets.filter(bullet => {
+      bullet.y -= this.BULLET_SPEED
+      return bullet.y > -this.BULLET_SIZE
+    })
+
+    // 检查碰撞
+    this.checkCollisions()
+
+    // 生成新的敌机
+    if (currentTime - this.lastEnemySpawnTime > this.ENEMY_SPAWN_INTERVAL) {
       this.spawnEnemy()
       this.lastEnemySpawnTime = currentTime
     }
 
-    // 发射子弹 - 修改这部分
-    if (currentTime - this.lastBulletTime > this.BULLET_INTERVAL) {  // 使用BULLET_INTERVAL
+    // 发射子弹
+    if (currentTime - this.lastBulletTime > this.BULLET_INTERVAL) {
       this.fireBullet()
       this.lastBulletTime = currentTime
     }
-
-    // 更新敌机位置
-    this.updateEnemies()
-
-    // 更新子弹位置
-    this.updateBullets()
-
-    // 检测碰撞
-    this.checkCollisions()
   }
 
   // 生成敌机
@@ -367,50 +315,48 @@ struct Index {
     console.info(`Current enemies count: ${this.enemies.length}`)
   }
 
-  // 更新敌机位置
-  private updateEnemies() {
-    console.info(`Before update - Enemies count: ${this.enemies.length}`)
-    this.enemies = this.enemies.filter(enemy => {
-      enemy.y += this.ENEMY_SPEED
-      console.info(`Enemy position: x: ${enemy.x}, y: ${enemy.y}`)
-      return enemy.y < this.gameAreaHeight
-    })
-    console.info(`After update - Enemies count: ${this.enemies.length}`)
-  }
-
-  // 更新子弹位置
-  private updateBullets() {
-    this.bullets = this.bullets.filter(bullet => {
-      bullet.y -= this.BULLET_SPEED
-      return bullet.y > -this.BULLET_SIZE // 移除超屏幕的子弹
-    })
-  }
-
   // 碰撞检测
   private checkCollisions() {
-    // 检查玩家与敌机的碰撞
-    for (const enemy of this.enemies) {
-      if (this.isColliding(
-        new GameObject(this.playerX, this.playerY, this.PLAYER_SIZE, this.PLAYER_SIZE),
-        enemy
-      )) {
-        this.gameOver()
-        return
-      }
-    }
-
-    // 检查子弹与敌机的碰撞
-    this.bullets = this.bullets.filter(bullet => {
-      let bulletHit = false
-      this.enemies = this.enemies.filter(enemy => {
-        if (!bulletHit && this.isColliding(bullet, enemy)) {
-          bulletHit = true
-          this.score += 100
-          return false
+    // 检查子弹和敌机的碰撞
+    this.bullets.forEach((bullet, bulletIndex) => {
+      this.enemies.forEach((enemy) => {
+        if (!enemy.isDestroyed && this.isColliding(bullet, enemy)) {
+          enemy.explosionState = 1
+          enemy.isDestroyed = true
+          this.score += 10
+          this.bullets.splice(bulletIndex, 1)
         }
-        return true
       })
-      return !bulletHit
+    })
+
+    // 检查玩家和敌机的碰撞
+    if (!this.player.invincible) {
+      this.enemies.forEach((enemy) => {
+        if (!enemy.isDestroyed && this.isColliding(this.player, enemy)) {
+          enemy.explosionState = 1
+          enemy.isDestroyed = true
+          this.player.lives--
+          if (this.player.lives <= 0) {
+            this.gameOver()
+          } else {
+            this.player.invincible = true
+            this.player.invincibleTimer = this.INVINCIBLE_DURATION
+          }
+        }
+      })
+    }
+  }
+
+  private createExplosion(x: number, y: number) {
+    this.explosions.push(new Explosion(x, y, this.ENEMY_SIZE, this.ENEMY_SIZE))
+  }
+
+  private updateExplosions() {
+    this.explosions.forEach((explosion, index) => {
+      explosion.frame++
+      if (explosion.frame >= 5) {
+        this.explosions.splice(index, 1)
+      }
     })
   }
 
@@ -446,19 +392,19 @@ struct Index {
       clearInterval(this.moveTimer)
     }
     this.moveTimer = setInterval(() => {
-      const dx = this.targetX - this.playerX
-      const dy = this.targetY - this.playerY
+      const dx = this.targetX - this.player.x
+      const dy = this.targetY - this.player.y
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       if (distance < this.PLAYER_SPEED) {
         // 到达目标位置
-        this.playerX = this.targetX
-        this.playerY = this.targetY
+        this.player.x = this.targetX
+        this.player.y = this.targetY
       } else {
         // 按比例计算X和Y方向的移动距离
         const ratio = this.PLAYER_SPEED / distance
-        this.playerX += dx * ratio
-        this.playerY += dy * ratio
+        this.player.x += dx * ratio
+        this.player.y += dy * ratio
       }
     }, this.GAME_INTERVAL)
   }
@@ -482,15 +428,5 @@ struct Index {
       clearInterval(this.gameTimeTimer)
       this.gameTimeTimer = 0
     }
-  }
-
-  // 获取当前敌机生成间隔
-  private getCurrentEnemySpawnInterval(): number {
-    // 每10秒减少500ms，直到达到最小间隔
-    const reduction = Math.floor(this.gameTime / 10000) * 500
-    return Math.max(
-      this.MIN_ENEMY_SPAWN_INTERVAL,
-      this.INITIAL_ENEMY_SPAWN_INTERVAL - reduction
-    )
   }
 }
