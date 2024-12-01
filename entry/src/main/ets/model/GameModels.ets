@@ -39,8 +39,10 @@ export class PlayerPlane extends GameObject {
 }
 
 export class Explosion extends GameObject {
-  frame: number = 0
-  
+  currentFrame: number = 0
+  totalFrames: number = 20
+  maxRadius: number = 30
+
   constructor(x: number, y: number, width: number, height: number) {
     super(x, y, width, height)
   }

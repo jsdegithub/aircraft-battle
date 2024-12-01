@@ -1,4 +1,8 @@
 import { GameObject, EnemyPlane, BulletItem, PlayerPlane, Explosion } from '../model/GameModels'
+import { ImageSize, PixelMapOptions } from '../model/ImageTypes'
+import image from '@ohos.multimedia.image'
+import common from '@ohos.app.ability.common'
+import resourceManager from '@ohos.resourceManager'
 
 @Entry
 @Component
@@ -49,6 +53,16 @@ struct Index {
   private readonly INITIAL_ENEMY_SPAWN_INTERVAL: number = 2000  // 初始敌机生成间隔
   private readonly MIN_ENEMY_SPAWN_INTERVAL: number = 500  // 最小敌机生成间隔
 
+  // Canvas相关
+  @State private canvasWidth: number = 0
+  @State private canvasHeight: number = 0
+  private settings: RenderingContextSettings = new RenderingContextSettings(true)
+  private renderContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
+
+  // 图片资源
+  @State private playerImage: Resource = $r('app.media.img_player_aircraft1')
+  private playerPixelMap: image.PixelMap | null = null
+
   aboutToAppear() {
     // 设置游戏区域尺寸
     this.gameAreaWidth = 750
@@ -56,236 +70,49 @@ struct Index {
     
     // 初始化飞机位置
     this.initializePlayerPosition()
+
+    // 加载玩家飞机图片
+    void this.initPlayerImage()
   }
 
-  build() {
-    Column() {
-      if (!this.isGameStarted) {
-        // 开始界面
-        Column() {
-          Text('飞机大战')
-            .fontSize(50)
-            .fontWeight(FontWeight.Bold)
-            .margin({ bottom: 50 })
-          
-          Button('开始游戏')
-            .width(200)
-            .height(50)
-            .fontSize(25)
-            .onClick(() => {
-              this.startGame()
-            })
+  private initPlayerImage(): void {
+    console.info('Starting to load player image')
+    const context = getContext(this) as common.UIAbilityContext
+    const resourceMgr = context.resourceManager
+
+    resourceMgr.getMediaContent(this.playerImage)
+      .then(imgRes => {
+        console.info('Got media content')
+        return image.createImageSource(imgRes.buffer)
+      })
+      .then(imageSource => {
+        if (!imageSource) {
+          console.error('Failed to create image source')
+          return null
         }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.Center)
-      } else {
-        Stack() {
-          // 游戏区域背景
-          Column()
-            .width('100%')
-            .height('100%')
-            .backgroundColor('#F1F3F5')
-
-          // 敌机
-          ForEach(this.enemies, (enemy: EnemyPlane) => {
-            if (!enemy.isDestroyed) {
-              Column() {
-                Stack() {
-                  // 机身主体
-                  Column() {
-                    // 机头
-                    Circle()
-                      .width(this.ENEMY_SIZE * 0.3)
-                      .height(this.ENEMY_SIZE * 0.3)
-                      .fill('#666666')
-                    
-                    // 机身
-                    Column()
-                      .width(this.ENEMY_SIZE * 0.3)
-                      .height(this.ENEMY_SIZE * 0.5)
-                      .backgroundColor('#666666')
-                  }
-                  .position({ x: this.ENEMY_SIZE * 0.35, y: 0 })
-                  
-                  // 左机翼
-                  Polygon()
-                    .width(this.ENEMY_SIZE * 0.6)
-                    .height(this.ENEMY_SIZE * 0.4)
-                    .points([
-                      [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.2],
-                      [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
-                      [0, this.ENEMY_SIZE * 0.4],
-                      [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4]
-                    ])
-                    .fill('#888888')
-                    .position({ x: 0, y: this.ENEMY_SIZE * 0.2 })
-                  
-                  // 右机翼
-                  Polygon()
-                    .width(this.ENEMY_SIZE * 0.6)
-                    .height(this.ENEMY_SIZE * 0.4)
-                    .points([
-                      [0, this.ENEMY_SIZE * 0.2],
-                      [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
-                      [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4],
-                      [0, this.ENEMY_SIZE * 0.4]
-                    ])
-                    .fill('#888888')
-                    .position({ x: this.ENEMY_SIZE * 0.4, y: this.ENEMY_SIZE * 0.2 })
-                  
-                  // 尾翼
-                  Polygon()
-                    .width(this.ENEMY_SIZE * 0.4)
-                    .height(this.ENEMY_SIZE * 0.2)
-                    .points([
-                      [this.ENEMY_SIZE * 0.2, 0],
-                      [this.ENEMY_SIZE * 0.4, 0],
-                      [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
-                      [0, this.ENEMY_SIZE * 0.2]
-                    ])
-                    .fill('#888888')
-                    .position({ x: this.ENEMY_SIZE * 0.3, y: this.ENEMY_SIZE * 0.7 })
-                  
-                  // 机舱玻璃
-                  Circle()
-                    .width(this.ENEMY_SIZE * 0.15)
-                    .height(this.ENEMY_SIZE * 0.15)
-                    .fill('#333333')
-                    .position({ x: this.ENEMY_SIZE * 0.425, y: this.ENEMY_SIZE * 0.15 })
-                }
-              }
-              .width(this.ENEMY_SIZE)
-              .height(this.ENEMY_SIZE)
-              .position({
-                x: enemy.x,
-                y: enemy.y
-              })
-              .rotate({ angle: 180 })
-              .opacity(enemy.explosionState === 0 ? 1 : (1 - enemy.explosionState / 4))
-            }
-          })
-
-          // 子弹
-          ForEach(this.bullets, (bullet: BulletItem) => {
-            Column() {
-              // 子弹主体
-              Circle()
-                .width(this.BULLET_SIZE)
-                .height(this.BULLET_SIZE)
-                .fill(Color.Black)
-              
-              // 子弹尾部
-              Circle()
-                .width(this.BULLET_SIZE * 0.6)
-                .height(this.BULLET_SIZE * 0.6)
-                .fill(Color.Black)
-                .margin({ top: -2 })
-            }
-            .position({
-              x: bullet.x,
-              y: bullet.y
-            })
-          })
-
-          // 玩家飞机
-          Image($r('app.media.img_player_aircraft1'))
-            .width(this.PLAYER_SIZE)
-            .height(this.PLAYER_SIZE)
-            .position({
-              x: this.player.x,
-              y: this.player.y
-            })
-            .opacity(this.player.invincible ? 0.5 : 1)
-
-          // 状态显示
-          Row() {
-            Column() {
-              Text(`时间: ${(this.gameTime / 1000).toFixed(1)}s`)
-                .fontSize(24)
-                .fontColor(Color.Black)
-                .margin({ bottom: 5 })
-              
-              Text(`得分: ${this.score}`)
-                .fontSize(24)
-                .fontColor(Color.Black)
-              
-              Text(`生命: ${this.player.lives}`)
-                .fontSize(24)
-                .fontColor(Color.Black)
-                .margin({ top: 5 })
-            }
-            .backgroundColor('rgba(255, 255, 255, 0.7)')
-            .padding(10)
-            .borderRadius(15)
-            .margin({ left: 20, top: 20 })
-          }
-          .alignItems(VerticalAlign.Top)
-          .width('100%')
-          .position({ x: 0, y: 0 })
+        console.info('Created image source')
+        const size: ImageSize = {
+          width: this.PLAYER_SIZE,
+          height: this.PLAYER_SIZE
         }
-        .width('100%')
-        .height('100%')
-        .onTouch((event: TouchEvent) => {
-          if (event.type === TouchType.Down || event.type === TouchType.Move) {
-            let touch = event.touches[0]
-            this.targetX = touch.x - this.PLAYER_SIZE / 2
-            this.targetY = touch.y - this.PLAYER_SIZE / 2
-
-            this.targetX = Math.max(0, Math.min(this.targetX, this.gameAreaWidth - this.PLAYER_SIZE))
-            this.targetY = Math.max(0, Math.min(this.targetY, this.gameAreaHeight - this.PLAYER_SIZE))
-
-            if (!this.isMoving) {
-              this.startMoving()
-            }
-          }
-        })
-      }
-
-      // 游戏结束界面
-      if (this.isGameOver) {
-        // 游戏结束界面
-        Column() {
-          Text('游戏结束')
-            .fontSize(40)
-            .fontWeight(FontWeight.Bold)
-          Text(`最终得分: ${this.score}`)
-            .fontSize(30)
-            .margin({ top: 20 })
-          Button('重新开始')
-            .width(200)
-            .height(50)
-            .margin({ top: 40 })
-            .onClick(() => {
-              this.resetGame()
-            })
+        const options: PixelMapOptions = {
+          desiredSize: size
         }
-        .width('100%')
-        .height('100%')
-        .backgroundColor('#88000000')
-        .justifyContent(FlexAlign.Center)
-      }
-    }
-    .width('100%')
-    .height('100%')
+        return imageSource.createPixelMap(options)
+      })
+      .then(pixelMap => {
+        if (pixelMap) {
+          this.playerPixelMap = pixelMap
+          console.info('Successfully loaded player image')
+        } else {
+          console.error('Failed to create pixel map')
+        }
+      })
+      .catch(() => {
+        console.error('Failed to load player image')
+      })
   }
 
-  // 游戏初始化
-  private startGame() {
-    this.isGameStarted = true
-    this.score = 0
-    this.isGameOver = false
-    this.enemies = []
-    this.bullets = []
-    this.explosions = []
-    this.gameTime = 0  // 重置游戏时间
-    
-    this.initializePlayerPosition()
-    this.startGameLoop()
-    this.startGameTimer()  // 启动计时器
-  }
-
-  // 修改初始化飞机位置的方法
   private initializePlayerPosition() {
     // 计算飞机的初始位置（屏幕底部中间）
     this.player.x = (this.gameAreaWidth - this.PLAYER_SIZE) / 2  // 居中
@@ -296,7 +123,6 @@ struct Index {
     this.targetY = this.player.y
   }
 
-  // 修改发射子弹的方法
   private fireBullet() {
     // 从飞机顶部中心发射子弹
     const bulletX = this.player.x + (this.PLAYER_SIZE - this.BULLET_SIZE) / 2
@@ -310,7 +136,6 @@ struct Index {
     ))
   }
 
-  // 重置游戏状态
   private resetGame() {
     this.score = 0
     this.isGameOver = false
@@ -331,14 +156,12 @@ struct Index {
     this.startGameLoop()
   }
 
-  // 开始游戏循环
   private startGameLoop() {
     this.gameTimer = setInterval(() => {
       this.updateGame()
     }, this.GAME_INTERVAL)
   }
 
-  // 游戏逻辑更新
   private updateGame() {
     const currentTime = new Date().getTime()
 
@@ -380,9 +203,123 @@ struct Index {
       this.fireBullet()
       this.lastBulletTime = currentTime
     }
+
+    // 渲染游戏画面
+    this.renderGame()
   }
 
-  // 生成敌机
+  private renderGame() {
+    if (!this.renderContext) return
+
+    // 清空画布
+    this.renderContext.clearRect(0, 0, this.gameAreaWidth, this.gameAreaHeight)
+
+    // 绘制敌机
+    this.enemies.forEach(enemy => {
+      this.drawEnemy(enemy)
+    })
+
+    // 绘制子弹
+    this.bullets.forEach(bullet => {
+      this.drawBullet(bullet)
+    })
+
+    // 绘制爆炸效果
+    this.explosions = this.explosions.filter(explosion => {
+      if (explosion.currentFrame < explosion.totalFrames) {
+        this.drawExplosionEffect(explosion)
+        explosion.currentFrame++
+        return true
+      }
+      return false
+    })
+  }
+
+  private drawEnemy(enemy: EnemyPlane) {
+    const ctx = this.renderContext
+    
+    // 保存当前状态
+    ctx.save()
+    
+    // 设置透明度（如果正在爆炸）
+    if (enemy.explosionState > 0) {
+      ctx.globalAlpha = 1 - enemy.explosionState / 4
+    }
+
+    // 移动到敌机中心点
+    ctx.translate(enemy.x + this.ENEMY_SIZE / 2, enemy.y + this.ENEMY_SIZE / 2)
+    ctx.rotate(Math.PI) // 旋转180度
+    ctx.translate(-this.ENEMY_SIZE / 2, -this.ENEMY_SIZE / 2)
+
+    // 绘制机身（三角形）
+    ctx.beginPath()
+    ctx.moveTo(this.ENEMY_SIZE / 2, 0)
+    ctx.lineTo(0, this.ENEMY_SIZE)
+    ctx.lineTo(this.ENEMY_SIZE, this.ENEMY_SIZE)
+    ctx.closePath()
+    ctx.fillStyle = '#666666'
+    ctx.fill()
+
+    // 绘制机翼（梯形）
+    ctx.beginPath()
+    ctx.moveTo(0, this.ENEMY_SIZE * 0.5)
+    ctx.lineTo(this.ENEMY_SIZE, this.ENEMY_SIZE * 0.5)
+    ctx.lineTo(this.ENEMY_SIZE * 0.8, this.ENEMY_SIZE * 0.8)
+    ctx.lineTo(this.ENEMY_SIZE * 0.2, this.ENEMY_SIZE * 0.8)
+    ctx.closePath()
+    ctx.fillStyle = '#888888'
+    ctx.fill()
+
+    // 绘制机舱（圆形）
+    ctx.beginPath()
+    ctx.arc(this.ENEMY_SIZE / 2, this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.15, 0, Math.PI * 2)
+    ctx.fillStyle = '#333333'
+    ctx.fill()
+
+    // 恢复画布状态
+    ctx.restore()
+  }
+
+  private drawBullet(bullet: BulletItem) {
+    const ctx = this.renderContext
+    
+    // 绘制子弹主体（圆形）
+    ctx.beginPath()
+    ctx.arc(bullet.x + this.BULLET_SIZE / 2, bullet.y + this.BULLET_SIZE / 2, 
+            this.BULLET_SIZE / 2, 0, Math.PI * 2)
+    ctx.fillStyle = '#000000'
+    ctx.fill()
+
+    // 绘制子弹尾迹（小圆形）
+    ctx.beginPath()
+    ctx.arc(bullet.x + this.BULLET_SIZE / 2, bullet.y + this.BULLET_SIZE, 
+            this.BULLET_SIZE / 3, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  private drawExplosionEffect(explosion: Explosion) {
+    const ctx = this.renderContext
+    const progress = explosion.currentFrame / explosion.totalFrames
+    const radius = progress * explosion.maxRadius
+    
+    ctx.beginPath()
+    ctx.arc(
+      explosion.x + explosion.width / 2,
+      explosion.y + explosion.height / 2,
+      radius,
+      0,
+      Math.PI * 2
+    )
+    
+    const alpha = 1 - progress
+    ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`
+    ctx.fill()
+  }
+
+  private createExplosion(x: number, y: number, size: number) {
+    this.explosions.push(new Explosion(x, y, size, size))
+  }
+
   private spawnEnemy() {
     const x = Math.random() * (this.gameAreaWidth - this.ENEMY_SIZE)
     console.info(`Spawning enemy at x: ${x}, y: -${this.ENEMY_SIZE}`)
@@ -390,52 +327,50 @@ struct Index {
     console.info(`Current enemies count: ${this.enemies.length}`)
   }
 
-  // 碰撞检测
   private checkCollisions() {
     // 检查子弹和敌机的碰撞
     this.bullets.forEach((bullet, bulletIndex) => {
-      this.enemies.forEach((enemy) => {
-        if (!enemy.isDestroyed && this.isColliding(bullet, enemy)) {
-          enemy.explosionState = 1
-          enemy.isDestroyed = true
-          this.score += 10
+      this.enemies.forEach((enemy, enemyIndex) => {
+        if (this.isColliding(bullet, enemy)) {
+          // 创建爆炸效果
+          this.createExplosion(enemy.x, enemy.y, enemy.width)
+          
+          // 移除子弹和敌机
           this.bullets.splice(bulletIndex, 1)
+          this.enemies.splice(enemyIndex, 1)
+          
+          // 增加分数
+          this.score += 10
         }
       })
     })
 
     // 检查玩家和敌机的碰撞
     if (!this.player.invincible) {
-      this.enemies.forEach((enemy) => {
-        if (!enemy.isDestroyed && this.isColliding(this.player, enemy)) {
-          enemy.explosionState = 1
-          enemy.isDestroyed = true
+      this.enemies.forEach((enemy, index) => {
+        if (this.isColliding(this.player, enemy)) {
+          // 创建爆炸效果
+          this.createExplosion(enemy.x, enemy.y, enemy.width)
+          
+          // 移除敌机
+          this.enemies.splice(index, 1)
+          
+          // 玩家受伤
           this.player.lives--
           if (this.player.lives <= 0) {
             this.gameOver()
           } else {
+            // 设置无敌状态
             this.player.invincible = true
-            this.player.invincibleTimer = this.INVINCIBLE_DURATION
+            setTimeout(() => {
+              this.player.invincible = false
+            }, 2000)
           }
         }
       })
     }
   }
 
-  private createExplosion(x: number, y: number) {
-    this.explosions.push(new Explosion(x, y, this.ENEMY_SIZE, this.ENEMY_SIZE))
-  }
-
-  private updateExplosions() {
-    this.explosions.forEach((explosion, index) => {
-      explosion.frame++
-      if (explosion.frame >= 5) {
-        this.explosions.splice(index, 1)
-      }
-    })
-  }
-
-  // 碰撞检测辅助函数
   private isColliding(obj1: GameObject, obj2: GameObject): boolean {
     return obj1.x < obj2.x + obj2.width &&
            obj1.x + obj1.width > obj2.x &&
@@ -443,7 +378,6 @@ struct Index {
            obj1.y + obj1.height > obj2.y
   }
 
-  // 游戏结束
   private gameOver() {
     this.isGameOver = true
     if (this.gameTimer) {
@@ -460,7 +394,6 @@ struct Index {
     this.stopMoving()
   }
 
-  // 开始移动
   private startMoving() {
     this.isMoving = true
     if (this.moveTimer) {
@@ -484,24 +417,150 @@ struct Index {
     }, this.GAME_INTERVAL)
   }
 
-  // 停止移动
   private stopMoving() {
     this.isMoving = false
     clearInterval(this.moveTimer)
   }
 
-  // 开始计时器
   private startGameTimer() {
     this.gameTimeTimer = setInterval(() => {
       this.gameTime += this.TIME_UPDATE_INTERVAL
     }, this.TIME_UPDATE_INTERVAL)
   }
 
-  // 停止计时器
   private stopGameTimer() {
     if (this.gameTimeTimer) {
       clearInterval(this.gameTimeTimer)
       this.gameTimeTimer = 0
+
     }
+  }
+
+  build() {
+    Column() {
+      if (!this.isGameStarted) {
+        Column() {
+          Text('飞机大战')
+            .fontSize(40)
+            .fontWeight(FontWeight.Bold)
+            .margin({ bottom: 40 })
+          Button('开始游戏')
+            .width(200)
+            .height(50)
+            .onClick(() => {
+              this.startGame()
+            })
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor('#F1F3F5')
+        .justifyContent(FlexAlign.Center)
+      } else {
+        Stack() {
+          Canvas(this.renderContext)
+            .width('100%')
+            .height('100%')
+            .backgroundColor('#F1F3F5')
+            .onAreaChange((oldValue: Area, newValue: Area) => {
+              this.canvasWidth = newValue.width as number
+              this.canvasHeight = newValue.height as number
+              this.gameAreaWidth = newValue.width as number
+              this.gameAreaHeight = newValue.height as number
+              if (!this.gameTimer) {
+                this.initializePlayerPosition()
+                this.startGame()
+              }
+            })
+            .onTouch((event: TouchEvent) => {
+              if (event.type === TouchType.Down || event.type === TouchType.Move) {
+                let touch = event.touches[0]
+                this.targetX = touch.x - this.PLAYER_SIZE / 2
+                this.targetY = touch.y - this.PLAYER_SIZE / 2
+
+                this.targetX = Math.max(0, Math.min(this.targetX, this.gameAreaWidth - this.PLAYER_SIZE))
+                this.targetY = Math.max(0, Math.min(this.targetY, this.gameAreaHeight - this.PLAYER_SIZE))
+
+                if (!this.isMoving) {
+                  this.startMoving()
+                }
+              }
+            })
+
+          // 玩家飞机
+          Image($r('app.media.img_player_aircraft1'))
+            .width(this.PLAYER_SIZE)
+            .height(this.PLAYER_SIZE)
+            .position({ x: this.player.x, y: this.player.y })
+            .opacity(this.player.invincible ? 0.5 : 1)
+
+          Row() {
+            Column() {
+              Text(`时间: ${(this.gameTime / 1000).toFixed(1)}s`)
+                .fontSize(24)
+                .fontColor(Color.Black)
+                .margin({ bottom: 5 })
+              
+              Text(`得分: ${this.score}`)
+                .fontSize(24)
+                .fontColor(Color.Black)
+                .margin({ top: 5 })
+              
+              Text(`生命: ${this.player.lives}`)
+                .fontSize(24)
+                .fontColor(Color.Black)
+                .margin({ top: 5 })
+            }
+            .backgroundColor('rgba(255, 255, 255, 0.7)')
+            .padding(10)
+            .borderRadius(15)
+            .margin({ left: 20, top: 20 })
+          }
+          .alignItems(VerticalAlign.Top)
+          .width('100%')
+          .position({ x: 0, y: 0 })
+          .zIndex(1)
+        }
+        .width('100%')
+        .height('100%')
+
+        if (this.isGameOver) {
+          Column() {
+            Text('游戏结束')
+              .fontSize(40)
+              .fontWeight(FontWeight.Bold)
+            Text(`最终得分: ${this.score}`)
+              .fontSize(30)
+              .margin({ top: 20 })
+            Button('重新开始')
+              .width(200)
+              .height(50)
+              .margin({ top: 40 })
+              .onClick(() => {
+                this.resetGame()
+              })
+          }
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0, 0, 0, 0.7)')
+          .justifyContent(FlexAlign.Center)
+        }
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  private startGame() {
+    this.isGameStarted = true
+    this.score = 0
+    this.isGameOver = false
+    this.enemies = []
+    this.bullets = []
+    this.explosions = []
+    this.gameTime = 0  // 重置游戏时间
+    
+    this.initializePlayerPosition()
+    this.startGameLoop()
+    this.startGameTimer()  // 启动计时器
   }
 }
