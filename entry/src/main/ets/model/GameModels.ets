@@ -29,7 +29,7 @@ export class BulletItem extends GameObject {
 }
 
 export class PlayerPlane extends GameObject {
-  lives: number = 3
+  lives: number = 1
   invincible: boolean = false
   invincibleTimer: number = 0
   
