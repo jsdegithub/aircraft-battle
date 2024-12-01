@@ -237,46 +237,69 @@ struct Index {
 
   private drawEnemy(enemy: EnemyPlane) {
     const ctx = this.renderContext
-    
+    const x = enemy.x
+    const y = enemy.y
+    const width = enemy.width
+    const height = enemy.height
+
     // 保存当前状态
     ctx.save()
     
-    // 设置透明度（如果正在爆炸）
-    if (enemy.explosionState > 0) {
-      ctx.globalAlpha = 1 - enemy.explosionState / 4
-    }
+    // 移动到飞机中心点
+    ctx.translate(x + width / 2, y + height / 2)
+    // 不再旋转180度，让飞机朝上
+    // 移回原点
+    ctx.translate(-(x + width / 2), -(y + height / 2))
 
-    // 移动到敌机中心点
-    ctx.translate(enemy.x + this.ENEMY_SIZE / 2, enemy.y + this.ENEMY_SIZE / 2)
-    ctx.rotate(Math.PI) // 旋转180度
-    ctx.translate(-this.ENEMY_SIZE / 2, -this.ENEMY_SIZE / 2)
+    // 设置颜色
+    ctx.fillStyle = '#8B4513' // 深棕色机身
+    ctx.strokeStyle = '#8B4513'
+    ctx.lineWidth = 2
 
-    // 绘制机身（三角形）
+    // 绘制机身（细长的矩形）
+    const bodyWidth = width * 0.2
+    const bodyHeight = height * 0.6
+    const bodyX = x + (width - bodyWidth) / 2
+    const bodyY = y + height * 0.2
+    ctx.fillRect(bodyX, bodyY, bodyWidth, bodyHeight)
+
+    // 绘制机翼（两侧的三角形）
     ctx.beginPath()
-    ctx.moveTo(this.ENEMY_SIZE / 2, 0)
-    ctx.lineTo(0, this.ENEMY_SIZE)
-    ctx.lineTo(this.ENEMY_SIZE, this.ENEMY_SIZE)
+    // 左机翼
+    ctx.moveTo(x, y + height * 0.4)
+    ctx.lineTo(x + width * 0.3, y + height * 0.4)
+    ctx.lineTo(x + width * 0.3, y + height * 0.6)
     ctx.closePath()
-    ctx.fillStyle = '#666666'
     ctx.fill()
 
-    // 绘制机翼（梯形）
+    // 右机翼
     ctx.beginPath()
-    ctx.moveTo(0, this.ENEMY_SIZE * 0.5)
-    ctx.lineTo(this.ENEMY_SIZE, this.ENEMY_SIZE * 0.5)
-    ctx.lineTo(this.ENEMY_SIZE * 0.8, this.ENEMY_SIZE * 0.8)
-    ctx.lineTo(this.ENEMY_SIZE * 0.2, this.ENEMY_SIZE * 0.8)
+    ctx.moveTo(x + width, y + height * 0.4)
+    ctx.lineTo(x + width * 0.7, y + height * 0.4)
+    ctx.lineTo(x + width * 0.7, y + height * 0.6)
     ctx.closePath()
-    ctx.fillStyle = '#888888'
     ctx.fill()
 
-    // 绘制机舱（圆形）
+    // 绘制尾翼（小三角形）
     ctx.beginPath()
-    ctx.arc(this.ENEMY_SIZE / 2, this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.15, 0, Math.PI * 2)
-    ctx.fillStyle = '#333333'
+    ctx.moveTo(x + width * 0.4, y + height * 0.8)
+    ctx.lineTo(x + width * 0.6, y + height * 0.8)
+    ctx.lineTo(x + width * 0.5, y + height)
+    ctx.closePath()
     ctx.fill()
 
-    // 恢复画布状态
+    // 绘制机头（圆形）
+    ctx.beginPath()
+    ctx.arc(x + width / 2, y + height * 0.2, width * 0.15, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 绘制装饰线条
+    ctx.beginPath()
+    ctx.moveTo(x + width * 0.3, y + height * 0.3)
+    ctx.lineTo(x + width * 0.7, y + height * 0.3)
+    ctx.stroke()
+
+    // 恢复状态
     ctx.restore()
   }
 
@@ -493,32 +516,34 @@ struct Index {
             .position({ x: this.player.x, y: this.player.y })
             .opacity(this.player.invincible ? 0.5 : 1)
 
-          Row() {
-            Column() {
-              Text(`时间: ${(this.gameTime / 1000).toFixed(1)}s`)
-                .fontSize(24)
-                .fontColor(Color.Black)
-                .margin({ bottom: 5 })
-              
-              Text(`得分: ${this.score}`)
-                .fontSize(24)
-                .fontColor(Color.Black)
-                .margin({ top: 5 })
-              
-              Text(`生命: ${this.player.lives}`)
-                .fontSize(24)
-                .fontColor(Color.Black)
-                .margin({ top: 5 })
-            }
-            .backgroundColor('rgba(255, 255, 255, 0.7)')
-            .padding(10)
-            .borderRadius(15)
-            .margin({ left: 20, top: 20 })
+          Column() {
+            Text(`时间: ${(this.gameTime / 1000).toFixed(1)}s`)
+              .fontSize(24)
+              .fontColor(Color.Black)
+              .alignSelf(ItemAlign.Start)
+              .margin({ bottom: 5 })
+            
+            Text(`得分: ${this.score}`)
+              .fontSize(24)
+              .fontColor(Color.Black)
+              .alignSelf(ItemAlign.Start)
+              .margin({ top: 5 })
+            
+            Text(`生命: ${this.player.lives}`)
+              .fontSize(24)
+              .fontColor(Color.Black)
+              .alignSelf(ItemAlign.Start)
+              .margin({ top: 5 })
           }
-          .alignItems(VerticalAlign.Top)
-          .width('100%')
+          .backgroundColor('rgba(255, 255, 255, 0.7)')
+          .padding(10)
+          .borderRadius(15)
+          .margin({ left: 20, top: 20 })
           .position({ x: 0, y: 0 })
-          .zIndex(1)
+          .alignSelf(ItemAlign.Start)
+          .width('auto')
+          .zIndex(2)
+
         }
         .width('100%')
         .height('100%')
