@@ -506,14 +506,14 @@ struct Index {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor('#F1F3F5')
+        .backgroundColor('#87CEEB')
         .justifyContent(FlexAlign.Center)
       } else {
         Stack() {
           Canvas(this.renderContext)
             .width('100%')
             .height('100%')
-            .backgroundColor('#F1F3F5')
+            .backgroundColor('#87CEEB')
             .onAreaChange((oldValue: Area, newValue: Area) => {
               this.canvasWidth = newValue.width as number
               this.canvasHeight = newValue.height as number
