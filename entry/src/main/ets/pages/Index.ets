@@ -90,27 +90,102 @@ struct Index {
           // 敌机
           ForEach(this.enemies, (enemy: EnemyPlane) => {
             if (!enemy.isDestroyed) {
-              Image($r('app.media.img_enemy_aircraft3'))
-                .width(this.ENEMY_SIZE)
-                .height(this.ENEMY_SIZE)
-                .position({
-                  x: enemy.x,
-                  y: enemy.y
-                })
-                .rotate({ angle: 180 })
-                .opacity(enemy.explosionState === 0 ? 1 : (1 - enemy.explosionState / 4))
+              Column() {
+                Stack() {
+                  // 机身主体
+                  Column() {
+                    // 机头
+                    Circle()
+                      .width(this.ENEMY_SIZE * 0.3)
+                      .height(this.ENEMY_SIZE * 0.3)
+                      .fill('#666666')
+                    
+                    // 机身
+                    Column()
+                      .width(this.ENEMY_SIZE * 0.3)
+                      .height(this.ENEMY_SIZE * 0.5)
+                      .backgroundColor('#666666')
+                  }
+                  .position({ x: this.ENEMY_SIZE * 0.35, y: 0 })
+                  
+                  // 左机翼
+                  Polygon()
+                    .width(this.ENEMY_SIZE * 0.6)
+                    .height(this.ENEMY_SIZE * 0.4)
+                    .points([
+                      [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.2],
+                      [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
+                      [0, this.ENEMY_SIZE * 0.4],
+                      [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4]
+                    ])
+                    .fill('#888888')
+                    .position({ x: 0, y: this.ENEMY_SIZE * 0.2 })
+                  
+                  // 右机翼
+                  Polygon()
+                    .width(this.ENEMY_SIZE * 0.6)
+                    .height(this.ENEMY_SIZE * 0.4)
+                    .points([
+                      [0, this.ENEMY_SIZE * 0.2],
+                      [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
+                      [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4],
+                      [0, this.ENEMY_SIZE * 0.4]
+                    ])
+                    .fill('#888888')
+                    .position({ x: this.ENEMY_SIZE * 0.4, y: this.ENEMY_SIZE * 0.2 })
+                  
+                  // 尾翼
+                  Polygon()
+                    .width(this.ENEMY_SIZE * 0.4)
+                    .height(this.ENEMY_SIZE * 0.2)
+                    .points([
+                      [this.ENEMY_SIZE * 0.2, 0],
+                      [this.ENEMY_SIZE * 0.4, 0],
+                      [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
+                      [0, this.ENEMY_SIZE * 0.2]
+                    ])
+                    .fill('#888888')
+                    .position({ x: this.ENEMY_SIZE * 0.3, y: this.ENEMY_SIZE * 0.7 })
+                  
+                  // 机舱玻璃
+                  Circle()
+                    .width(this.ENEMY_SIZE * 0.15)
+                    .height(this.ENEMY_SIZE * 0.15)
+                    .fill('#333333')
+                    .position({ x: this.ENEMY_SIZE * 0.425, y: this.ENEMY_SIZE * 0.15 })
+                }
+              }
+              .width(this.ENEMY_SIZE)
+              .height(this.ENEMY_SIZE)
+              .position({
+                x: enemy.x,
+                y: enemy.y
+              })
+              .rotate({ angle: 180 })
+              .opacity(enemy.explosionState === 0 ? 1 : (1 - enemy.explosionState / 4))
             }
           })
 
           // 子弹
           ForEach(this.bullets, (bullet: BulletItem) => {
-            Image($r('app.media.bullet'))
-              .width(this.BULLET_SIZE)
-              .height(this.BULLET_SIZE * 2)
-              .position({
-                x: bullet.x,
-                y: bullet.y
-              })
+            Column() {
+              // 子弹主体
+              Circle()
+                .width(this.BULLET_SIZE)
+                .height(this.BULLET_SIZE)
+                .fill(Color.Black)
+              
+              // 子弹尾部
+              Circle()
+                .width(this.BULLET_SIZE * 0.6)
+                .height(this.BULLET_SIZE * 0.6)
+                .fill(Color.Black)
+                .margin({ top: -2 })
+            }
+            .position({
+              x: bullet.x,
+              y: bullet.y
+            })
           })
 
           // 玩家飞机
