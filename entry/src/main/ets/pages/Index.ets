@@ -32,7 +32,7 @@ struct Index {
   private lastEnemySpawnTime: number = 0
   private lastBulletTime: number = 0
 
-  // 修改移���相关的属性
+  // 修改移相关的属性
   private readonly PLAYER_SPEED: number = 15
   private moveTimer: number = 0
   private targetX: number = 0
@@ -94,62 +94,63 @@ struct Index {
                 Column() {
                   // 机头
                   Circle()
-                    .width(this.ENEMY_SIZE * 0.4)
-                    .height(this.ENEMY_SIZE * 0.4)
-                    .fill('#FF0000')
+                    .width(this.ENEMY_SIZE * 0.3)
+                    .height(this.ENEMY_SIZE * 0.3)
+                    .fill('#666666')
                   
                   // 机身
-                  Rectangle()
-                    .width(this.ENEMY_SIZE * 0.4)
-                    .height(this.ENEMY_SIZE * 0.6)
-                    .fill('#FF0000')
+                  Column()
+                    .width(this.ENEMY_SIZE * 0.3)
+                    .height(this.ENEMY_SIZE * 0.5)
+                    .backgroundColor('#666666')
                 }
+                .position({ x: this.ENEMY_SIZE * 0.35, y: 0 })
                 
                 // 左机翼
                 Polygon()
-                  .width(this.ENEMY_SIZE * 0.5)
+                  .width(this.ENEMY_SIZE * 0.6)
                   .height(this.ENEMY_SIZE * 0.4)
                   .points([
+                    [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.2],
+                    [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
                     [0, this.ENEMY_SIZE * 0.4],
-                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.4],
-                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.2],
-                    [0, 0]
+                    [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4]
                   ])
-                  .fill('#CC0000')
-                  .position({ x: 0, y: this.ENEMY_SIZE * 0.3 })
+                  .fill('#888888')
+                  .position({ x: 0, y: this.ENEMY_SIZE * 0.2 })
                 
                 // 右机翼
                 Polygon()
-                  .width(this.ENEMY_SIZE * 0.5)
+                  .width(this.ENEMY_SIZE * 0.6)
                   .height(this.ENEMY_SIZE * 0.4)
                   .points([
                     [0, this.ENEMY_SIZE * 0.2],
-                    [this.ENEMY_SIZE * 0.5, 0],
-                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.4],
+                    [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2], 
+                    [this.ENEMY_SIZE * 0.6, this.ENEMY_SIZE * 0.4],
                     [0, this.ENEMY_SIZE * 0.4]
                   ])
-                  .fill('#CC0000')
-                  .position({ x: this.ENEMY_SIZE * 0.5, y: this.ENEMY_SIZE * 0.3 })
+                  .fill('#888888')
+                  .position({ x: this.ENEMY_SIZE * 0.4, y: this.ENEMY_SIZE * 0.2 })
                 
                 // 尾翼
                 Polygon()
-                  .width(this.ENEMY_SIZE * 0.6)
+                  .width(this.ENEMY_SIZE * 0.4)
                   .height(this.ENEMY_SIZE * 0.2)
                   .points([
-                    [this.ENEMY_SIZE * 0.3, 0],
-                    [this.ENEMY_SIZE * 0.6, 0],
-                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.2],
-                    [this.ENEMY_SIZE * 0.1, this.ENEMY_SIZE * 0.2]
+                    [this.ENEMY_SIZE * 0.2, 0],
+                    [this.ENEMY_SIZE * 0.4, 0],
+                    [this.ENEMY_SIZE * 0.3, this.ENEMY_SIZE * 0.2],
+                    [0, this.ENEMY_SIZE * 0.2]
                   ])
-                  .fill('#CC0000')
-                  .position({ x: this.ENEMY_SIZE * 0.2, y: this.ENEMY_SIZE * 0.8 })
+                  .fill('#888888')
+                  .position({ x: this.ENEMY_SIZE * 0.3, y: this.ENEMY_SIZE * 0.7 })
                 
                 // 机舱玻璃
                 Circle()
-                  .width(this.ENEMY_SIZE * 0.2)
-                  .height(this.ENEMY_SIZE * 0.2)
-                  .fill('#00FFFF')
-                  .position({ x: this.ENEMY_SIZE * 0.4, y: this.ENEMY_SIZE * 0.2 })
+                  .width(this.ENEMY_SIZE * 0.15)
+                  .height(this.ENEMY_SIZE * 0.15)
+                  .fill('#333333')
+                  .position({ x: this.ENEMY_SIZE * 0.425, y: this.ENEMY_SIZE * 0.15 })
               }
             }
             .width(this.ENEMY_SIZE)
