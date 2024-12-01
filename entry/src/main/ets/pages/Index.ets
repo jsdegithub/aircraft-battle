@@ -32,7 +32,7 @@ struct Index {
   private lastEnemySpawnTime: number = 0
   private lastBulletTime: number = 0
 
-  // 修改移动相关的属性
+  // 修改移���相关的属性
   private readonly PLAYER_SPEED: number = 15
   private moveTimer: number = 0
   private targetX: number = 0
@@ -88,13 +88,79 @@ struct Index {
 
           // 敌机
           ForEach(this.enemies, (enemy: EnemyPlane) => {
-            Image($r('app.media.img_enemy_aircraft1'))
-              .width(this.ENEMY_SIZE)
-              .height(this.ENEMY_SIZE)
-              .position({
-                x: `${enemy.x}vp`,
-                y: `${enemy.y}vp`
-              })
+            Column() {
+              Stack() {
+                // 机身主体
+                Column() {
+                  // 机头
+                  Circle()
+                    .width(this.ENEMY_SIZE * 0.4)
+                    .height(this.ENEMY_SIZE * 0.4)
+                    .fill('#FF0000')
+                  
+                  // 机身
+                  Rectangle()
+                    .width(this.ENEMY_SIZE * 0.4)
+                    .height(this.ENEMY_SIZE * 0.6)
+                    .fill('#FF0000')
+                }
+                
+                // 左机翼
+                Polygon()
+                  .width(this.ENEMY_SIZE * 0.5)
+                  .height(this.ENEMY_SIZE * 0.4)
+                  .points([
+                    [0, this.ENEMY_SIZE * 0.4],
+                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.4],
+                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.2],
+                    [0, 0]
+                  ])
+                  .fill('#CC0000')
+                  .position({ x: 0, y: this.ENEMY_SIZE * 0.3 })
+                
+                // 右机翼
+                Polygon()
+                  .width(this.ENEMY_SIZE * 0.5)
+                  .height(this.ENEMY_SIZE * 0.4)
+                  .points([
+                    [0, this.ENEMY_SIZE * 0.2],
+                    [this.ENEMY_SIZE * 0.5, 0],
+                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.4],
+                    [0, this.ENEMY_SIZE * 0.4]
+                  ])
+                  .fill('#CC0000')
+                  .position({ x: this.ENEMY_SIZE * 0.5, y: this.ENEMY_SIZE * 0.3 })
+                
+                // 尾翼
+                Polygon()
+                  .width(this.ENEMY_SIZE * 0.6)
+                  .height(this.ENEMY_SIZE * 0.2)
+                  .points([
+                    [this.ENEMY_SIZE * 0.3, 0],
+                    [this.ENEMY_SIZE * 0.6, 0],
+                    [this.ENEMY_SIZE * 0.5, this.ENEMY_SIZE * 0.2],
+                    [this.ENEMY_SIZE * 0.1, this.ENEMY_SIZE * 0.2]
+                  ])
+                  .fill('#CC0000')
+                  .position({ x: this.ENEMY_SIZE * 0.2, y: this.ENEMY_SIZE * 0.8 })
+                
+                // 机舱玻璃
+                Circle()
+                  .width(this.ENEMY_SIZE * 0.2)
+                  .height(this.ENEMY_SIZE * 0.2)
+                  .fill('#00FFFF')
+                  .position({ x: this.ENEMY_SIZE * 0.4, y: this.ENEMY_SIZE * 0.2 })
+              }
+            }
+            .width(this.ENEMY_SIZE)
+            .height(this.ENEMY_SIZE)
+            .position({
+              x: `${enemy.x}vp`,
+              y: `${enemy.y}vp`
+            })
+            .opacity(0.99)
+            .translate({ x: 0, y: 0 })
+            .rotate({ angle: 180 })  // 使敌机朝下
           })
 
           // 玩家飞机
