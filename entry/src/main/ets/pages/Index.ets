@@ -31,7 +31,9 @@ struct Index {
   @State private explosions: Explosion[] = []
 
   // 游戏循环定时器
-  private gameTimer: number = 0
+  @State private gameTimer: number = 0
+  @State private enemySpawnTimer: number = 0
+  @State private shootTimer: number = 0
   private readonly GAME_INTERVAL: number = 50 // 降低更新频率
   
   // 游戏参数
@@ -402,13 +404,34 @@ struct Index {
   }
 
   private gameOver() {
-    this.isGameOver = true
+    // 停止所有计时器
     if (this.gameTimer) {
       clearInterval(this.gameTimer)
       this.gameTimer = 0
     }
-    this.stopGameTimer()  // 停止计时器
-    this.stopMoving()
+    if (this.enemySpawnTimer) {
+      clearInterval(this.enemySpawnTimer)
+      this.enemySpawnTimer = 0
+    }
+    if (this.shootTimer) {
+      clearInterval(this.shootTimer)
+      this.shootTimer = 0
+    }
+
+    // 重置游戏状态
+    this.isGameStarted = false
+    this.isMoving = false
+    this.gameTime = 0
+    this.score = 0
+    this.enemies = []
+    this.bullets = []
+    this.explosions = []
+    
+    // 重置玩家状态
+    this.player = new PlayerPlane(0, 0, this.PLAYER_SIZE, this.PLAYER_SIZE)
+
+    // 强制重新渲染
+    this.renderContext?.clearRect(0, 0, this.gameAreaWidth, this.gameAreaHeight)
   }
 
   aboutToDisappear() {
@@ -466,7 +489,14 @@ struct Index {
           Text('飞机大战')
             .fontSize(40)
             .fontWeight(FontWeight.Bold)
-            .margin({ bottom: 40 })
+            .margin({ bottom: 20 })
+          
+          if (this.score > 0) {
+            Text(`游戏结束！得分：${this.score}`)
+              .fontSize(30)
+              .margin({ bottom: 20 })
+          }
+          
           Button('开始游戏')
             .width(200)
             .height(50)
